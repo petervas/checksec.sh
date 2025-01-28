@@ -14,16 +14,20 @@ PARENT=$(
   ./build_binaries.sh
 )
 
-for bin in all all32 all_cl all_cl32 \
-  cfi cfi32 sstack sstack32 \
+for bin in cfi cfi32 sstack sstack32 \
+  cfi_strip sstack_strip cfi_strip32 sstack_strip32 \
+  all all32 all_cl all_cl32 all_static \
+  all_strip all_strip_cl all_strip32 all_strip_cl32 \
   dso.so dso32.so dso_cl.so dso_cl32.so \
-  none none32 none_cl none_cl32 \
+  fs0 fs032 fs0_cl fs0_cl32 \
+  fs0_strip fs0_strip_cl fs0_strip32 fs0_strip_cl32 \
+  none none32 none_cl none_cl32 none_static \
+  none_strip none_strip_cl none_strip32 none_strip_cl32 \
+  now now32 now_cl now_cl32 \
   partial partial32 partial_cl partial_cl32 \
   rel.o rel32.o rel_cl.o rel_cl32.o \
   rpath rpath32 rpath_cl rpath_cl32 \
-  runpath runpath32 runpath_cl runpath_cl32 \
-  nolibc nolibc_cl nolibc32 nolibc_cl32 \
-  fszero fszero_cl fszero32 fszero_cl32; do
+  runpath runpath32 runpath_cl runpath_cl32; do
   if [[ ! -f "${DIR}/binaries/output/${bin}" ]]; then
     echo "Could not find test file output/${bin}. Run build_binaries.sh in the binaries folder to generate it."
     exit 255
@@ -36,7 +40,7 @@ done
 
 echo "Starting RELRO check"
 # Full RELRO
-for bin in all all32 all_cl all_cl32; do
+for bin in all all32 all_cl all_cl32 all_static; do
   if [[ $("${PARENT}"/checksec --file="${DIR}/binaries/output/${bin}" --format=csv | cut -d, -f1) != "Full RELRO" ]]; then
     echo "Full RELRO validation failed on \"${bin}\""
     exit 1
@@ -50,7 +54,7 @@ for bin in partial partial32 partial_cl partial_cl32; do
   fi
 done
 # No RELRO
-for bin in none none32 none_cl none_cl32; do
+for bin in none none32 none_cl none_cl32 none_static now now32 now_cl now_cl32; do
   if [[ $("${PARENT}"/checksec --file="${DIR}/binaries/output/${bin}" --format=csv | cut -d, -f1) != "No RELRO" ]]; then
     echo "No RELRO validation failed on \"${bin}\""
     exit 1
@@ -69,16 +73,23 @@ echo "RELRO validation tests passed"
 
 echo "Starting Stack Canary check"
 # Canary found
-for bin in all all32 all_cl all_cl32; do
+for bin in all all32 all_cl all_cl32 all_strip all_strip_cl all_strip32 all_strip_cl32; do
   if [[ $("${PARENT}"/checksec --file="${DIR}/binaries/output/${bin}" --format=csv | cut -d, -f2) != "Canary found" ]]; then
     echo "Stack Canary validation failed on \"${bin}\""
     exit 1
   fi
 done
 # No Canary found
-for bin in none none32 none_cl none_cl32; do
+for bin in none none32 none_cl none_cl32 none_strip none_strip_cl none_strip32 none_strip_cl32; do
   if [[ $("${PARENT}"/checksec --file="${DIR}/binaries/output/${bin}" --format=csv | cut -d, -f2) != "No Canary found" ]]; then
     echo "No Stack Canary validation failed on \"${bin}\""
+    exit 1
+  fi
+done
+# N/A (static)
+for bin in all_static none_static; do
+  if [[ $("${PARENT}"/checksec --file="${DIR}/binaries/output/${bin}" --format=csv | cut -d, -f2) != "N/A" ]]; then
+    echo "N/A Stack Canary validation failed on \"${bin}\""
     exit 1
   fi
 done
@@ -88,14 +99,14 @@ echo "Stack Canary validation tests passed"
 
 echo "Starting NX check"
 # NX enabled
-for bin in all all32 all_cl all_cl32; do
+for bin in all all32 all_cl all_cl32 all_static; do
   if [[ $("${PARENT}"/checksec --file="${DIR}/binaries/output/${bin}" --format=csv | cut -d, -f3) != "NX enabled" ]]; then
     echo "NX enabled validation failed on \"${bin}\""
     exit 1
   fi
 done
 # NX disabled
-for bin in none none32 none_cl none_cl32; do
+for bin in none none32 none_cl none_cl32 none_static; do
   if [[ $("${PARENT}"/checksec --file="${DIR}/binaries/output/${bin}" --format=csv | cut -d, -f3) != "NX disabled" ]]; then
     echo "NX disabled validation failed on \"${bin}\""
     exit 1
@@ -114,14 +125,14 @@ echo "NX validation tests passed"
 
 echo "Starting PIE check"
 # PIE enabled
-for bin in all all32 all_cl all_cl32; do
+for bin in all all32 all_cl all_cl32 all_static; do
   if [[ $("${PARENT}"/checksec --file="${DIR}/binaries/output/${bin}" --format=csv | cut -d, -f4) != "PIE enabled" ]]; then
     echo "PIE enabled validation failed on \"${bin}\""
     exit 1
   fi
 done
 # No PIE
-for bin in none none32 none_cl none_cl32; do
+for bin in none none32 none_cl none_cl32 none_static; do
   if [[ $("${PARENT}"/checksec --file="${DIR}/binaries/output/${bin}" --format=csv | cut -d, -f4) != "No PIE" ]]; then
     echo "No PIE validation failed on \"${bin}\""
     exit 1
@@ -160,20 +171,27 @@ for bin in none_cl none_cl32; do
     exit 1
   fi
 done
+# N/A
+for bin in cfi_strip cfi_strip32 none_strip_cl none_strip_cl32; do
+  if [[ $("${PARENT}"/checksec --file="${DIR}/binaries/output/${bin}" --extended --format=csv | cut -d, -f5) != "N/A" ]]; then
+    echo "No CFI validation failed on \"${bin}\""
+    exit 1
+  fi
+done
 echo "CFI validation tests passed"
 
 #============================================
 
 echo "Starting SafeStack check"
 # with SafeStack
-for bin in sstack sstack32; do
+for bin in sstack sstack32 sstack_strip sstack_strip32; do
   if [[ $("${PARENT}"/checksec --file="${DIR}/binaries/output/${bin}" --extended --format=csv | cut -d, -f6) != "with SafeStack" ]]; then
     echo "SafeStack validation failed on \"${bin}\""
     exit 1
   fi
 done
 # without SafeStack
-for bin in none_cl none_cl32; do
+for bin in none_cl none_cl32 none_strip_cl none_strip_cl32; do
   if [[ $("${PARENT}"/checksec --file="${DIR}/binaries/output/${bin}" --extended --format=csv | cut -d, -f6) != "without SafeStack" ]]; then
     echo "No SafeStack validation failed on \"${bin}\""
     exit 1
@@ -237,14 +255,14 @@ echo "RUNPATH validation tests passed"
 
 echo "Starting Symbols check"
 # No Symbols
-for bin in all all32 all_cl all_cl32; do
+for bin in all all32 all_cl all_cl32 all_static; do
   if [[ $("${PARENT}"/checksec --file="${DIR}/binaries/output/${bin}" --format=csv | cut -d, -f7) != "No Symbols" ]]; then
     echo "No Symbols validation failed on \"${bin}\""
     exit 1
   fi
 done
 # Symbols
-for bin in none none32 none_cl none_cl32; do
+for bin in none none32 none_cl none_cl32 none_static; do
   if [[ $("${PARENT}"/checksec --file="${DIR}/binaries/output/${bin}" --format=csv | cut -d, -f7) != "Symbols" ]]; then
     echo "Symbols validation failed on \"${bin}\""
     exit 1
@@ -256,23 +274,31 @@ echo "Symbols validation tests passed"
 
 echo "Starting Fortify check"
 # Yes
-for bin in all all32 all_cl all_cl32; do
+for bin in all all32 all_cl all_cl32 all_strip all_strip_cl all_strip32 all_strip_cl32; do
   if [[ $("${PARENT}"/checksec --file="${DIR}/binaries/output/${bin}" --format=csv | cut -d, -f8) != "Yes" ]]; then
     echo "Fortify validation failed on \"${bin}\""
     exit 1
   fi
 done
 # No
-for bin in none none32 none_cl none_cl32; do
+# removed none_strip none_strip_cl. 64bit without pie and striped section header has no dynamic section either.
+for bin in none none32 none_cl none_cl32 none_strip32 none_strip_cl32; do
   if [[ $("${PARENT}"/checksec --file="${DIR}/binaries/output/${bin}" --format=csv | cut -d, -f8) != "No" ]]; then
     echo "No Fortify validation failed on \"${bin}\""
     exit 1
   fi
 done
-# N/A
-for bin in nolibc nolibc_cl nolibc32 nolibc_cl32 fszero fszero_cl fszero32 fszero_cl32; do
+# N/A (no libc)
+for bin in all_static none_static; do
   if [[ $("${PARENT}"/checksec --file="${DIR}/binaries/output/${bin}" --format=csv | cut -d, -f8) != "N/A" ]]; then
-    echo "No Fortify validation failed on \"${bin}\": $("${PARENT}"/checksec --file="${DIR}/binaries/${bin}" --format=csv | cut -d, -f8)"
+    echo "No Fortify validation failed on \"${bin}\""
+    exit 1
+  fi
+done
+# N/A (nothing to fortify)
+for bin in fs0 fs0_cl fs032 fs0_cl32 fs0_strip fs0_strip_cl fs0_strip32 fs0_strip_cl32; do
+  if [[ $("${PARENT}"/checksec --file="${DIR}/binaries/output/${bin}" --format=csv | cut -d, -f8-10) != "N/A,n/a,0" ]]; then
+    echo "No Fortify validation failed on \"${bin}\""
     exit 1
   fi
 done
@@ -314,7 +340,7 @@ echo "RELRO process validation tests passed"
 
 echo "Starting Stack Canary process check"
 # Canary found
-for bin in all all32 all_cl all_cl32; do
+for bin in all all32 all_cl all_cl32 all_strip all_strip_cl all_strip32 all_strip_cl32; do
   "${DIR}"/binaries/output/${bin} > /dev/null &
   if [[ $("${PARENT}"/checksec --proc=${bin} --format=csv | cut -d, -f4) != "Canary found" ]]; then
     echo "Stack Canary process validation failed on \"${bin}\""
@@ -322,10 +348,18 @@ for bin in all all32 all_cl all_cl32; do
   fi
 done
 # No Canary found
-for bin in none none32 none_cl none_cl32; do
+for bin in none none32 none_cl none_cl32 none_strip32 none_strip_cl32; do
   "${DIR}"/binaries/output/${bin} > /dev/null &
   if [[ $("${PARENT}"/checksec --proc=${bin} --format=csv | cut -d, -f4) != "No Canary found" ]]; then
     echo "No Stack Canary process validation failed on \"${bin}\""
+    exit 1
+  fi
+done
+# N/A (static)
+for bin in all_static none_static; do
+  "${DIR}"/binaries/output/${bin} > /dev/null &
+  if [[ $("${PARENT}"/checksec --proc=${bin} --format=csv | cut -d, -f4) != "N/A" ]]; then
+    echo "N/A Stack Canary process validation failed on \"${bin}\""
     exit 1
   fi
 done
@@ -351,6 +385,14 @@ for bin in none_cl none_cl32; do
     exit 1
   fi
 done
+# N/A
+for bin in cfi_strip cfi_strip32 none_strip_cl none_strip_cl32; do
+  "${DIR}"/binaries/output/${bin} > /dev/null &
+  if [[ $("${PARENT}"/checksec --proc=${bin} --extended --format=csv | cut -d, -f5) != "N/A" ]]; then
+    echo "No CFI process validation failed on \"${bin}\""
+    exit 1
+  fi
+done
 sleep 2
 echo "CFI process validation tests passed"
 
@@ -358,14 +400,15 @@ echo "CFI process validation tests passed"
 
 echo "Starting SafeStack process check"
 # with SafeStack (omit 32-bit SafeStack because the binary does not work)
-bin=sstack
-"${DIR}"/binaries/output/${bin} > /dev/null &
-if [[ $("${PARENT}"/checksec --proc=${bin} --extended --format=csv | cut -d, -f6) != "with SafeStack" ]]; then
-  echo "SafeStack process validation failed on \"${bin}\""
-  exit 1
-fi
+for bin in sstack sstack_strip; do
+  "${DIR}"/binaries/output/${bin} > /dev/null &
+  if [[ $("${PARENT}"/checksec --proc=${bin} --extended --format=csv | cut -d, -f6) != "with SafeStack" ]]; then
+    echo "SafeStack process validation failed on \"${bin}\""
+    exit 1
+  fi
+done
 # without SafeStack
-for bin in none_cl none_cl32; do
+for bin in none_cl none_cl32 none_strip_cl none_strip_cl32; do
   "${DIR}"/binaries/output/${bin} > /dev/null &
   if [[ $("${PARENT}"/checksec --proc=${bin} --extended --format=csv | cut -d, -f6) != "without SafeStack" ]]; then
     echo "No SafeStack process validation failed on \"${bin}\""
@@ -423,7 +466,7 @@ echo "PIE process validation tests passed"
 
 echo "Starting Fortify process check"
 # Yes
-for bin in all all32 all_cl all_cl32; do
+for bin in all all32 all_cl all_cl32 all_strip all_strip_cl all_strip32 all_strip_cl32; do
   "${DIR}"/binaries/output/${bin} > /dev/null &
   if [[ $("${PARENT}"/checksec --proc=${bin} --format=csv | cut -d, -f8) != "Yes" ]]; then
     echo "Fortify process validation failed on \"${bin}\""
@@ -431,18 +474,18 @@ for bin in all all32 all_cl all_cl32; do
   fi
 done
 # No
-for bin in none none32 none_cl none_cl32; do
+for bin in none none32 none_cl none_cl32 none_strip32 none_strip_cl32; do
   "${DIR}"/binaries/output/${bin} > /dev/null &
   if [[ $("${PARENT}"/checksec --proc=${bin} --format=csv | cut -d, -f8) != "No" ]]; then
     echo "No Fortify process validation failed on \"${bin}\""
     exit 1
   fi
 done
-# N/A
-for bin in nolibc nolibc_cl nolibc32 nolibc_cl32 fszero fszero_cl fszero32 fszero_cl32; do
+# N/A (no libc or nothing to fortify)
+for bin in all_static none_static fs0 fs0_cl fs032 fs0_cl32 fs0_strip fs0_strip_cl fs0_strip32 fs0_strip_cl32; do
   "${DIR}"/binaries/output/${bin} > /dev/null &
   if [[ $("${PARENT}"/checksec --proc=${bin} --format=csv | cut -d, -f8) != "N/A" ]]; then
-    echo "No Fortify process validation failed on \"${bin}\": $("${PARENT}"/checksec --proc=${bin} --format=csv | cut -d, -f8)"
+    echo "No Fortify process validation failed on \"${bin}\""
     exit 1
   fi
 done
