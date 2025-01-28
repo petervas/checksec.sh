@@ -4,6 +4,12 @@
 
 # --- Modified Version ---
 # Name    : checksec.sh
+# Version : 4.0.0
+# Author  : Peter Vaskovic
+# Date    : January 2025
+# Download: https://github.com/petervas/checksec.sh
+# --- Modified Version ---
+# Name    : checksec.sh
 # Version : 1.7.0
 # Author  : Brian Davis
 # Date    : Feburary 2014
@@ -39,18 +45,15 @@ export PS4='+(${BASH_SOURCE##*/}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 export LC_ALL="C"
 
 # version
-SCRIPT_VERSION=2024060801
-SCRIPT_MAJOR=2
-SCRIPT_MINOR=7
-SCRIPT_REVISION=1
+SCRIPT_VERSION=2025012901
+SCRIPT_MAJOR=4
+SCRIPT_MINOR=0
+SCRIPT_REVISION=0
 
 # global vars
 debug=false
 verbose=false
 format="cli"
-SCRIPT_NAME="checksec"
-SCRIPT_URL="https://github.com/slimm609/checksec.sh/raw/master/${SCRIPT_NAME}"
-SIG_URL="https://github.com/slimm609/checksec.sh/raw/master/$(basename ${SCRIPT_NAME} .sh).sig"
 # Currently unused, adding for reference
 # https://github.com/gcc-mirror/gcc/blob/master/gcc/builtins.def#L1112
 # FORTIFY_FUNCTIONS=(memcpy_chk memmove_chk mempcpy_chk memset_chk stpcpy_chk stpncpy_chk strcat_chk strcpy_chk strncat_chk strncpy_chk snprintf_chk sprintf_chk vsnprintf_chk vsprintf_chk fprintf_chk printf_chk vfprintf_chk vprintf_chk)
@@ -64,15 +67,6 @@ FS_end=_chk
 FS_cnt_total=0
 FS_cnt_checked=0
 FS_cnt_unchecked=0
-
-# check if directory exists
-dir_exists() {
-  if [[ -d "${1}" ]]; then
-    return 0
-  else
-    return 1
-  fi
-}
 
 # check user privileges
 root_privs() {
@@ -89,7 +83,7 @@ command_exists() {
   type "${1}" > /dev/null 2>&1
 }
 
-for command in cat awk sed sysctl objdump uname mktemp openssl grep stat file find sort head ps readlink basename id which xargs ldconfig tr; do
+for command in cat awk sed sysctl uname grep stat file find sort head ps readlink id xargs ldconfig tr readelf; do
   if ! (command_exists ${command}); then
     echo >&2 -e "\e[31mWARNING: '${command}' not found! It's required for most checks.\e[0m"
     commandsmissing=true
@@ -676,7 +670,7 @@ debug_report() {
   echo "OS=${OS}"
   echo "VER=${VER}"
 
-  for command in cat awk sysctl sed uname objdump mktemp openssl grep stat file find head ps readlink basename id which wget curl readelf eu-readelf; do
+  for command in cat awk sed sysctl uname grep stat file find sort head ps readlink id xargs ldconfig tr readelf eu-readelf; do
     path="$(command -v ${command})"
     if [[ -e "${path}" ]]; then
       ls -l "${path}"
@@ -1627,90 +1621,6 @@ proccheck() {
   fi
 }
 
-#openssl public key for verification of updates
-read -r PUBKEY << EOF
-LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEFNSUlCQ2dLQ0FRRUF3Z25kcnk2WGJpNE8wR2w1T2UzSQp1eWRyMlZqR1hteDJFM0thd0wrK1F3a2FVT0RHOEVuT24weFZ1S1ZkZEphZjY3Rmxzd3pPYjh1RFRDTjdsWURnCnFKQXdmNllTOUFsdU5RRmlFQWhFRlgxL0dsMi9TSnFHYXhFVU9HTlV3NTI5a3BVR0MwNmN6SHhENEcvdWNBQlkKT05iWm9Vc1pIYmRnZUNueWs1dzZ0SWs3MEplNmZ2em5Da2JxbUZhS0UyQnhWTERLU0liSDBTak5XT3RSMmF6ZAp1V3p2RU1kVXFlZlZjYXErUDFjV0dLNy94VllSNkV3ME1aQTdWU0xkREhlRUVySW9Kc3UvM2VaeUR5ZDlaUlJvCmdpajM2R1N2SFREclU1ZVdXRlN0Q01UM29DRDhMSjVpbXBReWpWd3Z5M3Z4ZVNVYzVkdytZUDU0OU9jNHF2bzYKOXdJREFRQUIKLS0tLS1FTkQgUFVCTElDIEtFWS0tLS0tCg==
-EOF
-
-# Update/Upgrade
-# shellcheck disable=SC2120
-upgrade() {
-  if ${pkg_release}; then
-    printf "\033[31mError: Unknown option '%s'.\033[m\n\n" "${1}"
-    help
-    exit 1
-  fi
-  umask 027
-  TMP_FILE=$(mktemp /tmp/checksec.XXXXXXXXXX)
-  SIG_FILE=$(mktemp /tmp/checksec_sig.XXXXXXXX)
-  PUBKEY_FILE=$(mktemp /tmp/checksec_pubkey.XXXXXXXXXX)
-  fetch "${SCRIPT_URL}" "${TMP_FILE}"
-  fetch "${SIG_URL}" "${SIG_FILE}"
-  echo "${PUBKEY}" | base64 -d > "${PUBKEY_FILE}"
-  if ! openssl dgst -sha256 -verify "${PUBKEY_FILE}" -signature "${SIG_FILE}" "${TMP_FILE}" > /dev/null 2>&1; then
-    echo "file signature does not match. Update may be tampered"
-    rm -f "${TMP_FILE}" "${SIG_FILE}" "${PUBKEY_FILE}" > /dev/null 2>&1
-    exit 1
-  fi
-  UPDATE_VERSION=$(grep "^SCRIPT_VERSION" "${TMP_FILE}" | awk -F"=" '{ print $2 }')
-  if [[ "${SCRIPT_VERSION}" != "${UPDATE_VERSION}" ]]; then
-    PERMS=$(stat -c "%a" "$0")
-    rm -f "${SIG_FILE}" "${PUBKEY_FILE}" > /dev/null 2>&1
-    mv "${TMP_FILE}" "$0" > /dev/null 2>&1
-    exit_status=$?
-    if [[ "${exit_status}" -eq "0" ]]; then
-      echo "checksec.sh updated - Rev. ${UPDATE_VERSION}"
-      chmod "${PERMS}" "${0}"
-    else
-      echo "Error: Could not update... Please check permissions"
-      rm -f "${TMP_FILE}" > /dev/null 2>&1
-      exit 1
-    fi
-  else
-    echo "checksec.sh not updated... Already on latest version"
-    rm -f "${TMP_FILE}" "${SIG_FILE}" "${PUBKEY_FILE}" > /dev/null 2>&1
-    exit 1
-  fi
-}
-
-# Version compare
-vercomp() {
-  if [[ "${1}" == "${2}" ]]; then
-    return 0
-  fi
-  local IFS=.
-  local i ver1="${1}" ver2="${2}"
-  # fill empty fields in ver1 with zeros
-  for ((i = ${#ver1[@]}; i < ${#ver2[@]}; i++)); do
-    ver1[i]=0
-  done
-  for ((i = 0; i < ${#ver1[@]}; i++)); do
-    if [[ -z ${ver2[i]} ]]; then
-      # fill empty fields in ver2 with zeros
-      ver2[i]=0
-    fi
-    if ((10#${ver1[i]} > 10#${ver2[i]})); then
-      return 1
-    fi
-    if ((10#${ver1[i]} < 10#${ver2[i]})); then
-      return 2
-    fi
-  done
-  return 0
-}
-
-# Fetch the update
-fetch() {
-  if type wget > /dev/null 2>&1; then
-    wget --no-check-certificate -O "${2}" "${1}" > /dev/null 2>&1
-  elif type curl > /dev/null 2>&1; then
-    curl --insecure --remote-name -o "${2}" "${1}" > /dev/null 2>&1
-  else
-    echo 'Warning: Neither wget nor curl is available. online updates unavailable' >&2
-    exit 1
-  fi
-}
-
 # version information
 version() {
   echo "checksec v${SCRIPT_MAJOR}.${SCRIPT_MINOR}.${SCRIPT_REVISION}, Brian Davis, github.com/slimm609/checksec.sh, Dec 2015"
@@ -1747,11 +1657,6 @@ while getopts "${optspec}" optchar; do
           ;;
         debug_report)
           debug_report
-          exit 0
-          ;;
-        update | upgrade)
-          # shellcheck disable=SC2119
-          upgrade
           exit 0
           ;;
         format=* | output=*)
