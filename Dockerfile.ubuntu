@@ -1,9 +1,0 @@
-FROM ubuntu:22.04
-
-# install the build script and run it.
-# this is to give more flexiblity to the build process
-COPY tests/docker-build.sh /tmp
-RUN /tmp/docker-build.sh
-
-COPY .  /root
-WORKDIR /root
