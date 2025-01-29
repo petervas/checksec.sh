@@ -509,8 +509,8 @@ chk_proc() {
     exit 1
   fi
   cd /proc || exit
-  # assume a process name was given
-  IFS=" " read -r -a fpids <<< "$(pgrep -d ' ' "${CHK_PROC}")"
+  # assume a process name was given (pgrep can only use up to 15 characters to identify processes)
+  IFS=" " read -r -a fpids <<< "$(pgrep -d ' ' "${CHK_PROC:0:15}")"
   # if nothing was found check if it is a PID
   if [[ ${#fpids} -eq 0 ]]; then
     if (isNumeric "${CHK_PROC}") && [[ -n "$(ps -p "${CHK_PROC}" -o pid=)" ]]; then
