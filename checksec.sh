@@ -57,7 +57,6 @@ format="cli"
 # https://github.com/gcc-mirror/gcc/blob/master/gcc/builtins.def#L1112
 # FORTIFY_FUNCTIONS=(memcpy_chk memmove_chk mempcpy_chk memset_chk stpcpy_chk stpncpy_chk strcat_chk strcpy_chk strncat_chk strncpy_chk snprintf_chk sprintf_chk vsnprintf_chk vsprintf_chk fprintf_chk printf_chk vfprintf_chk vprintf_chk)
 
-pkg_release=false
 commandsmissing=false
 OPT=0
 extended_checks=false
@@ -641,7 +640,7 @@ debug_report() {
   id
   uname -a
 
-  echo "checksec version: ${SCRIPT_MAJOR}.${SCRIPT_MINOR}.${SCRIPT_REVISION} -- ${SCRIPT_VERSION}"
+  echo "checksec.sh version: ${SCRIPT_MAJOR}.${SCRIPT_MINOR}.${SCRIPT_REVISION} -- ${SCRIPT_VERSION}"
 
   if [[ -f /etc/os-release ]]; then
     # freedesktop.org and systemd
@@ -981,7 +980,7 @@ isNumeric() {
 
 # help
 help() {
-  echo "Usage: checksec [--format={cli,csv,xml,json}] [OPTION]"
+  echo "Usage: checksec.sh [--format={cli,csv,xml,json}] [OPTION]"
   echo
   echo
   echo "Options:"
@@ -999,9 +998,6 @@ help() {
   echo "  --fortify-proc={process ID}"
   echo "  --version"
   echo "  --help"
-  if ! ${pkg_release}; then
-    echo "  --update or --upgrade"
-  fi
   echo
   echo " ## Modifiers"
   echo "  --debug"
@@ -1011,7 +1007,7 @@ help() {
   echo "  --extended"
   echo
   echo "For more information, see:"
-  echo "  http://github.com/slimm609/checksec.sh"
+  echo "  https://github.com/petervas/checksec.sh"
   echo
 }
 
@@ -1655,7 +1651,7 @@ proccheck() {
 
 # version information
 version() {
-  echo "checksec v${SCRIPT_MAJOR}.${SCRIPT_MINOR}.${SCRIPT_REVISION}, Peter Vaskovic, https://github.com/petervas/checksec.sh, January 2025"
+  echo "checksec.sh v${SCRIPT_MAJOR}.${SCRIPT_MINOR}.${SCRIPT_REVISION}, Peter Vaskovic, https://github.com/petervas/checksec.sh, January 2025"
   echo "Based on checksec v2.7.1, Brian Davis, https://github.com/slimm609/checksec, June 2024"
   echo
 }
