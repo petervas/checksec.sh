@@ -1,133 +1,52 @@
-checksec
+checksec.sh
 ========
 
-Checksec is a bash script to check the properties of executables (like PIE, RELRO, Canaries, ASLR, Fortify Source).
-It has been originally written by Tobias Klein and the original source is available here: http://www.trapkit.de/tools/checksec.html
+**checksec.sh** is a Bash script that analyzes the security properties of executables, checking for mitigations such as **PIE, RELRO, Stack Canaries, ASLR, Fortify Source**, and more.
 
-Updates
--------
-  ** MAJOR UPDATES ** 2.1.0
-   - Changed structure to be more modular and switched to getopts so options can be in any order.   e.g. format=json can be at the end now, however.
-   - All options now require `--$option=$value` instead of `--$option $value`
-   - --extended option now includes clang CFI and safe stack checks
+This project is a **continuation of the original checksec v2.7.1** by Brian Davis, which is now unmaintained. The original repository can be found [here](https://github.com/slimm609/checksec).
 
-   Last Update: 2024-06-08
+## Why checksec.sh?
 
-For OSX
--------
- Most of the tools do not work on mach-O binaries or the OSX kernel, so it is not supported
-
-**Cosign Verify Checksec**
-
-`cosign verify-blob --signature checksec_new.sig --certificate checksec_new.pub checksec --certificate-identity=slimm609@gmail.com --certificate-oidc-issuer=https://github.com/login/oauth`
-
-**Openssl Verify Checksec**
-Openssl verification is being deprecated in favor of Cosign Verification, which is backed by a hardware security module and provides a greater level of intergrity.
-
-`openssl dgst -sha256 -verify checksec.pub -signature checksec.sig checksec`
-
-Examples
---------
-
-**normal (or --format=cli)**
-
-    $checksec --file=/bin/ls
-    RELRO           STACK CANARY      NX            PIE             RPATH      RUNPATH      FILE
-    Partial RELRO   Canary found      NX enabled    No PIE          No RPATH   No RUNPATH   /bin/ls
-
-**csv**
-
-    $ checksec --output=csv --file=/bin/ls
-    Partial RELRO,Canary found,NX enabled,No PIE,No RPATH,No RUNPATH,/bin/ls
-
-**xml**
-
-    $ checksec --output=xml --file=/bin/ls
-    <?xml version="1.0" encoding="UTF-8"?>
-    <file relro="partial" canary="yes" nx="yes" pie="no" rpath="no" runpath="no" filename='/bin/ls'/>
-
-**json**
-
-    $ checksec --output=json --file=/bin/ls
-    { "file": { "relro":"partial","canary":"yes","nx":"yes","pie":"no","rpath":"no","runpath":"no","filename":"/bin/ls" } }
-
-**Fortify test in cli**
-
-    $ checksec --fortify-proc=1
-    * Process name (PID)                         : init (1)
-    * FORTIFY_SOURCE support available (libc)    : Yes
-    * Binary compiled with FORTIFY_SOURCE support: Yes
-
-    ------ EXECUTABLE-FILE ------- . -------- LIBC --------
-    FORTIFY-able library functions | Checked function names
-    -------------------------------------------------------
-    fdelt_chk                      | __fdelt_chk
-    read                           | __read_chk
-    syslog_chk                     | __syslog_chk
-    fprintf_chk                    | __fprintf_chk
-    vsnprintf_chk                  | __vsnprintf_chk
-    fgets                          | __fgets_chk
-    strncpy                        | __strncpy_chk
-    snprintf_chk                   | __snprintf_chk
-    memset                         | __memset_chk
-    strncat_chk                    | __strncat_chk
-    memcpy                         | __memcpy_chk
-    fread                          | __fread_chk
-    sprintf_chk                    | __sprintf_chk
-
-    SUMMARY:
-
-    * Number of checked functions in libc                : 78
-    * Total number of library functions in the executable: 116
-    * Number of FORTIFY-able functions in the executable : 13
-    * Number of checked functions in the executable      : 7
-    * Number of unchecked functions in the executable    : 6
+✅ **Portable** – Runs on different architectures without modification  
+✅ **Lightweight** – No compilation required, just a simple Bash script  
+✅ **Minimal dependencies** – Works with tools available in most OS default installations  
+✅ **Offline compatibility** – Can be used to check cross-compiled systems or embedded targets, such as unpacked firmwares, for tests that do not depend on the running system (e.g., file checks).  
+✅ **Transparent & modifiable** – Easy to understand and customize  
+✅ **Compatible** – Maintains the same command-line interface as the original checksec  
 
 
-**Kernel test in Cli**
+## Installation  
 
-    $ checksec --kernel
-    * Kernel protection information:
+To install **checksec.sh**, simply download the checksec.sh script to your desired location and make it executable:  
 
-    Description - List the status of kernel protection mechanisms. Rather than
-    inspect kernel mechanisms that may aid in the prevention of exploitation of
-    userspace processes, this option lists the status of kernel configuration
-    options that harden the kernel itself against attack.
+```bash
+chmod +x checksec.sh
+```
 
-    Kernel config: /proc/config.gz
+## Usage
 
-        GCC stack protector support:            Enabled
-        Strict user copy checks:                Disabled
-        Enforce read-only kernel data:          Disabled
-        Restrict /dev/mem access:               Enabled
-        Restrict /dev/kmem access:              Enabled
+checksec.sh keeps the familiar execution format of the original checksec, making it easy to use for existing users. Simply run:
 
-    * Kernel Heap Hardening: No KERNHEAP
+```bash
+./checksec.sh --file=/path/to/binary
+```
 
-    The KERNHEAP hardening patchset is available here:
-     https://www.subreption.com/kernheap/
+For more details, run:
 
+```bash
+./checksec.sh --help
+```
 
-**Kernel Test in XML**
+## Offline Analysis for Cross-compiled Systems or Embedded Targets
 
-    $ checksec --output=xml --kernel
-    <?xml version="1.0" encoding="UTF-8"?>
-    <kernel config='/boot/config-3.11-2-amd64' gcc_stack_protector='yes' strict_user_copy_check='no' ro_kernel_data='yes' restrict_dev_mem_access='yes' restrict_dev_kmem_access='no'>
-        <kernheap config='no' />
-    </kernel>
+If you're working with cross-compiled systems or embedded targets (such as unpacked firmwares), you can specify the path to the appropriate libc file for analysis. This allows you to check files without relying on the running system. For example:
 
-**Kernel Test in Json**
+```bash
+./checksec.sh --dir=/path/to/firmware --libcfile=/path/to/firmware/lib/
+```
 
-    $ checksec --output=json --kernel
-     { "kernel": { "KernelConfig":"/boot/config-3.11-2-amd64","gcc_stack_protector":"yes","strict_user_copy_check":"no","ro_kernel_data":"yes","restrict_dev_mem_access":"yes","restrict_dev_kmem_access":"no" },{ "kernheap_config":"no" } }
+or directly specify the libc file:
 
-Using with Cross-compiled Systems
----------------------------------------
-The checksec tool can be used against cross-compiled target file-systems offline.  Key limitations to note:
-* Kernel tests - require you to execute the script on the running system you'd like to check as they directly access kernel resources to identify system configuration/state. You can specify the config file for the kernel after the -k option.
-
-* File check -  the offline testing works for all the checks but the Fortify feature.  Fortify, uses the running system's libraries vs those in the offline file-system. There are ways to workaround this (chroot) but at the moment, the ideal configuration would have this script executing on the running system when checking the files.
-
-The checksec tool's normal use case is for runtime checking of the systems configuration.  If the system is an embedded target, the native binutils tools like readelf may not be present.  This would restrict which parts of the script will work.
-
-Even with those limitations, the amount of valuable information this script provides, still makes it a valuable tool for checking offline file-systems.
+```bash
+./checksec.sh --dir=/path/to/firmware --libcfile=/path/to/firmware/lib/libc.so.6
+```
