@@ -1,7 +1,16 @@
 checksec.sh
 ========
 
-**checksec.sh** is a Bash script that analyzes the security properties of executables, checking for mitigations such as **PIE, RELRO, Stack Canaries, ASLR, Fortify Source**, and more.
+**checksec.sh** is a lightweight and portable Bash script that helps assess the security properties of executables, processes, and system configurations. It provides insights into applied security mitigations and system hardening measures.
+
+Features:
+
+* Analyze file security properties, checking for **PIE, RELRO, Stack Canaries, ASLR, Fortify Source, and more.**
+* Inspect **running processes** to check applied security features.
+* Assess **kernel security settings**, including optional Kconfig checks.
+* Evaluate **detailed Fortify Source usage** for binaries and running processes.
+* Support **batch analysis** using file lists or directories.
+* Output results in **multiple formats (CLI, CSV, XML, JSON)** for easy integration into other tools.
 
 This project is a **continuation of the original checksec v2.7.1** by Brian Davis, which is now unmaintained. The original repository can be found [here](https://github.com/slimm609/checksec).
 
@@ -10,10 +19,21 @@ This project is a **continuation of the original checksec v2.7.1** by Brian Davi
 ✅ **Portable** – Runs on different architectures without modification  
 ✅ **Lightweight** – No compilation required, just a simple Bash script  
 ✅ **Minimal dependencies** – Works with tools available in most OS default installations  
-✅ **Offline compatibility** – Can be used to check cross-compiled systems or embedded targets, such as unpacked firmwares, for tests that do not depend on the running system (e.g., file checks).  
+✅ **Offline & Embedded compatibility** – Can be used to check cross-compiled systems or embedded targets, such as unpacked firmwares, for tests that do not depend on the running system (e.g., file checks).  
+✅ **Supports static and bare-metal binaries** – Works with statically linked ELF files and standalone executables  
 ✅ **Transparent & modifiable** – Easy to understand and customize  
 ✅ **Compatible** – Maintains the same command-line interface as the original checksec  
 
+## Supported File Types for Hardening Checks
+
+checksec.sh supports analyzing various ELF binaries, including:
+
+* Executable files – Standard ELF binaries
+* Shared libraries – .so files used by dynamically linked applications
+* Object files – Compiled but not yet linked objects (e.g., kernel objects)
+* Static and bare-metal binaries – Statically linked executables without dynamic dependencies
+
+This makes checksec.sh useful for analyzing both standard applications and embedded system binaries, including unpacked firmware images.
 
 ## Installation  
 
