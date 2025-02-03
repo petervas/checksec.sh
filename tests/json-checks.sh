@@ -85,7 +85,7 @@ while read -r file; do
     echo "custom kernel json validation failed"
     exit 1
   fi
-done < <(find "${PARENT}"/kernel_configs/configs/ -type f -iname "config-*")
+done < <(find "${DIR}"/kernel_configs/configs/ -type f -iname "*.config")
 
 #check json for file
 echo "starting file check - json"
